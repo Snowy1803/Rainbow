@@ -31,8 +31,26 @@ protocol StringGenerator {
 struct ConsoleStringGenerator: StringGenerator {
     func generate(for entry: Rainbow.Entry) -> String {
 
+        var foregroundChanged = false
+        var backgroundChanged = false
+        var styleChanged = false
+        
         let strings: [String] = entry.segments.map {
+            
+            if $0.text.isEmpty {
+                return ""
+            }
+            
             var codes: [UInt8] = []
+            
+            if (foregroundChanged && $0.color == nil) || (backgroundChanged && $0.backgroundColor == nil) || styleChanged {
+                codes.append(0)
+            }
+            
+            foregroundChanged = $0.color != nil
+            backgroundChanged = $0.backgroundColor != nil
+            styleChanged = !($0.styles?.isEmpty ?? true)
+            
             if let color = $0.color {
                 codes += color.value
             }
@@ -43,7 +61,7 @@ struct ConsoleStringGenerator: StringGenerator {
                 codes += styles.flatMap{ $0.value }
             }
 
-            if codes.isEmpty || $0.text.isEmpty {
+            if codes.isEmpty {
                 return $0.text
             } else {
                 return "\(ControlCode.CSI)\(codes.map{String($0)}.joined(separator: ";"))m\($0.text)"
